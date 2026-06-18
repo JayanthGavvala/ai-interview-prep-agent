@@ -6,7 +6,7 @@ genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # Set layout to 'centered' for a cleaner look
-st.set_page_config(page_title="NexGen Interview AI", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="Interview AI", page_icon="⚡", layout="centered")
 
 # --- Custom CSS for a Cool Glowing Title ---
 st.markdown("""
