@@ -27,7 +27,7 @@ Instead of generic LeetCode drills, NexGen parses your uploaded CV and generates
 
 ---
 
-## 🚀 Getting Started
+## Running project locally
 
 ### 1. Clone the repository
 
