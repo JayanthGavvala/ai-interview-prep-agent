@@ -46,11 +46,11 @@ st.markdown("""
         font-weight: 800;
         line-height: 1.08;
         letter-spacing: -0.04em;
-        color: #0F0A1E;
+        color: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
         margin-bottom: 0;
     }
     .hero-title span {
-        background: linear-gradient(135deg, #EF4444 50%, #F97316 100%);
+        background: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
