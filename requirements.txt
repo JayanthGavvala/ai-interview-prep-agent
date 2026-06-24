@@ -2,3 +2,4 @@ streamlit
 google-generativeai
 streamlit-mic-recorder
 PyPDF2
+google-cloud-firestor
