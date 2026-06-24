@@ -6,7 +6,7 @@ import PyPDF2
 import re
 from google.cloud import firestore
 from google.oauth2 import service_account
-st.write(dict(st.secrets))  # temporary debug line
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1. PAGE CONFIG & CSS
