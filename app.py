@@ -1,18 +1,58 @@
 import streamlit as st
 import google.generativeai as genai
+import google.api_core.exceptions
 from streamlit_mic_recorder import speech_to_text
 import PyPDF2
 import re
 
-# 1. --- Basic App Setup ---
-st.set_page_config(page_title="NexGen Interview AI", page_icon="⚡", layout="wide")
+# 1. --- Basic App Setup & Apple-Style CSS ---
+st.set_page_config(page_title="NexGen Interview AI", page_icon="⚡", layout="centered")
 
-# Custom CSS for slick UI
+# Injecting Custom CSS for the "Apple" aesthetic
 st.markdown("""
     <style>
-    .gradient-text { font-size: 42px !important; font-weight: 800 !important; 
-                     background: -webkit-linear-gradient(45deg, #00f2fe, #4facfe, #00f2fe);
-                     -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0px !important;}
+    /* Use Apple System Fonts and smooth scrolling */
+    html, body, [class*="css"] {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        scroll-behavior: smooth;
+    }
+    
+    /* Hide Streamlit default top header and footer for a clean landing page feel */
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Hero Title Styling */
+    .hero-title {
+        font-size: 3.5rem !important;
+        font-weight: 800 !important;
+        background: -webkit-linear-gradient(45deg, #FF3366, #FF9933);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        letter-spacing: -0.05em;
+        margin-bottom: 0px !important;
+        padding-bottom: 0px !important;
+        line-height: 1.1;
+    }
+    
+    /* Subtitle Styling */
+    .hero-subtitle {
+        text-align: center;
+        font-size: 1.2rem;
+        color: #888;
+        margin-top: 10px;
+        margin-bottom: 50px;
+        font-weight: 300;
+    }
+    
+    /* Section Headers */
+    .section-header {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-top: 60px;
+        margin-bottom: 20px;
+        letter-spacing: -0.02em;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -21,177 +61,134 @@ try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     model = genai.GenerativeModel('gemini-2.5-flash')
 except Exception as e:
-    st.error("API Key not found or invalid. Please check your secrets setup.")
+    st.error("API Key not found. Please check your secrets setup.")
 
-# 2. --- State Management (The Mock Database) ---
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
-# This dictionary acts as our temporary database storing users and their scores
-if "user_database" not in st.session_state:
-    st.session_state.user_database = {} 
-if "current_question" not in st.session_staten:
+# 2. --- State Management ---
+if "current_question" not in st.session_state:
     st.session_state.current_question = None
 if "user_answer" not in st.session_state:
     st.session_state.user_answer = None
 if "feedback" not in st.session_state:
     st.session_state.feedback = None
+if "score_history" not in st.session_state:
+    st.session_state.score_history = []
+if "cv_context" not in st.session_state:
+    st.session_state.cv_context = ""
 
-# 3. --- Page Components (Functions) ---
+# ==========================================
+# UI SECTION 1: THE HERO BANNER
+# ==========================================
+st.markdown('<div class="hero-title">NexGen Interview AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-subtitle">Pro-level technical interview prep. Powered by Gemini.</div>', unsafe_allow_html=True)
 
-def login_screen():
-    """Handles the Authentication UI"""
-    st.markdown('<div class="gradient-text">NexGen Interview AI</div>', unsafe_allow_html=True)
-    st.write("Welcome back. Please log in to access your interview dashboard.")
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
+# ==========================================
+# UI SECTION 2: CONFIGURATION
+# ==========================================
+with st.container(border=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        role = st.selectbox("Target Role", ["Software Engineer", "Machine Learning Engineer", "Data Scientist"])
     with col2:
-        with st.container(border=True):
-            st.subheader("🔐 System Login")
-            login_user = st.text_input("Username")
-            login_pass = st.text_input("Password", type="password") # Visual only for now
-            
-            if st.button("Login", use_container_width=True, type="primary"):
-                if login_user:
-                    # In a real app, we check the database here. For now, we let anyone in!
-                    st.session_state.logged_in = True
-                    st.session_state.username = login_user
-                    
-                    # Create a profile for them if they are new
-                    if login_user not in st.session_state.user_database:
-                        st.session_state.user_database[login_user] = {"scores": [], "cv_uploaded": False}
-                    
-                    st.rerun() # Refresh page to hide login screen
-                else:
-                    st.error("Please enter a username.")
+        diff = st.select_slider("Difficulty Level", ["Intern", "Junior", "Mid-Level", "Senior"])
+        
+    st.divider()
+    
+    uploaded_file = st.file_uploader("Upload your CV to personalize questions (PDF)", type="pdf")
+    if uploaded_file:
+        pdf_reader = PyPDF2.PdfReader(uploaded_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+        st.session_state.cv_context = text
+        st.success("CV Processed successfully.")
 
-def interview_room():
-    """The main AI Interview simulator"""
-    st.header(f"🎙️ Interview Room")
-    st.write("Configure your settings and begin the simulation.")
-    
-    chat_col, set_col = st.columns([2, 1])
-    
-    with set_col:
-        with st.container(border=True):
-            st.markdown("### 🎛️ Parameters")
-            role = st.selectbox("Role", ["Machine Learning Engineer", "Software Engineer", "Data Scientist"])
-            diff = st.select_slider("Difficulty", ["Intern", "Junior", "Mid-Level"])
-            
-            uploaded_file = st.file_uploader("Attach CV (Optional)", type="pdf")
-            cv_text = ""
-            if uploaded_file:
-                pdf_reader = PyPDF2.PdfReader(uploaded_file)
-                for page in pdf_reader.pages:
-                    cv_text += page.extract_text()
-                st.session_state.user_database[st.session_state.username]["cv_uploaded"] = True
-                st.success("CV Processed")
+    # Centered massive generate button
+    st.write("") # Spacing
+    if st.button("Initialize Interview ⚡", use_container_width=True, type="primary"):
+        try:
+            with st.spinner("Connecting to Neural Interface..."):
+                prompt = f"You are interviewing a {diff} {role}. Ask ONE technical interview question. Keep it concise."
+                if st.session_state.cv_context:
+                    prompt += f" Look at this CV and ask a question specifically about a project or skill listed here: {st.session_state.cv_context}"
                 
-            if st.button("⚡ Generate Question", use_container_width=True, type="primary"):
-                with st.spinner("Connecting to AI..."):
-                    prompt = f"You are interviewing a {diff} {role}. Ask one technical question. Keep it concise."
-                    if cv_text:
-                        prompt += f" Ask a highly specific question based on this candidate's CV: {cv_text}"
-                    
-                    st.session_state.current_question = model.generate_content(prompt).text
-                    st.session_state.user_answer = None
-                    st.session_state.feedback = None
+                st.session_state.current_question = model.generate_content(prompt).text
+                st.session_state.user_answer = None
+                st.session_state.feedback = None
+        except google.api_core.exceptions.ResourceExhausted:
+            st.error("⚠️ AI Rate Limit Reached. Please wait 60 seconds and try again.")
 
-    with chat_col:
-        with st.container(border=True):
-            if not st.session_state.current_question:
-                st.info("Awaiting simulation start... Click 'Generate Question' on the right.")
-            else:
-                with st.chat_message("assistant", avatar="🤖"):
-                    st.write(st.session_state.current_question)
 
-                if st.session_state.user_answer:
-                    with st.chat_message("user", avatar="💻"):
-                        st.write(st.session_state.user_answer)
+# ==========================================
+# UI SECTION 3: THE INTERVIEW ARENA
+# ==========================================
+if st.session_state.current_question:
+    st.markdown('<div class="section-header">Live Interview</div>', unsafe_allow_html=True)
+    
+    with st.container(border=True):
+        # 1. AI Question
+        with st.chat_message("assistant", avatar="🤖"):
+            st.write(st.session_state.current_question)
+
+        # 2. User Answer
+        if st.session_state.user_answer:
+            with st.chat_message("user", avatar="💻"):
+                st.write(st.session_state.user_answer)
+                
+        # 3. AI Feedback
+        if st.session_state.feedback:
+            with st.chat_message("assistant", avatar="📊"):
+                st.markdown(st.session_state.feedback)
+        else:
+            # Input mechanisms (only show if no feedback yet)
+            st.write("---")
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                st.write("🎙️ **Voice:**")
+                spoken = speech_to_text(language='en', start_prompt="Record", stop_prompt="Stop", key='STT')
+            with col2:
+                st.write("⌨️ **Text:**")
+                typed = st.chat_input("Type your response here...")
+            
+            ans = spoken or typed
+            if ans:
+                st.session_state.user_answer = ans
+                try:
+                    with st.spinner("Analyzing parameters..."):
+                        eval_prompt = f"""
+                        Grade this answer to the question: '{st.session_state.current_question}'. 
+                        Candidate said: '{ans}'. 
+                        Evaluate them strictly. 
+                        CRITICAL: You MUST end your response with a new line exactly like this:
+                        FINAL_SCORE: X
+                        (Where X is a number from 0 to 10).
+                        """
+                        feedback_response = model.generate_content(eval_prompt).text
+                        st.session_state.feedback = feedback_response
                         
-                if st.session_state.feedback:
-                    with st.chat_message("assistant", avatar="📊"):
-                        st.markdown(st.session_state.feedback)
-                else:
-                    st.write("🎙️ **Speak your answer:**")
-                    spoken = speech_to_text(language='en', start_prompt="Start Recording", stop_prompt="Stop Recording", key='STT')
-                    typed = st.chat_input("Or type your response here...")
-                    
-                    ans = spoken or typed
-                    if ans:
-                        st.session_state.user_answer = ans
-                        with st.spinner("Analyzing parameters..."):
-                            eval_prompt = f"""
-                            Grade this answer to the question: '{st.session_state.current_question}'. 
-                            Candidate said: '{ans}'. 
-                            Evaluate them as a strict interviewer.
-                            CRITICAL: You MUST end your response with a new line exactly like this:
-                            FINAL_SCORE: X
-                            (Where X is a number from 0 to 10).
-                            """
-                            feedback = model.generate_content(eval_prompt).text
-                            st.session_state.feedback = feedback
-                            
-                            # Extract score and save to user's database profile!
-                            match = re.search(r"FINAL_SCORE:\s*([0-9]+(?:\.[0-9]+)?)", feedback)
-                            if match:
-                                # Save the score for the specific user logged in
-                                st.session_state.user_database[st.session_state.username]["scores"].append(float(match.group(1)))
-                            st.rerun()
+                        # Extract score
+                        match = re.search(r"FINAL_SCORE:\s*([0-9]+(?:\.[0-9]+)?)", feedback_response)
+                        if match:
+                            score = float(match.group(1))
+                            st.session_state.score_history.append(score)
+                        st.rerun()
+                except google.api_core.exceptions.ResourceExhausted:
+                    st.error("⚠️ Google API Rate Limit Reached. Please wait 60 seconds before submitting.")
 
-def profile_dashboard():
-    """Shows user statistics"""
-    st.header(f"📊 {st.session_state.username}'s Profile")
-    user_data = st.session_state.user_database[st.session_state.username]
-    scores = user_data["scores"]
+# ==========================================
+# UI SECTION 4: PERFORMANCE DASHBOARD
+# ==========================================
+if len(st.session_state.score_history) > 0:
+    st.markdown('<div class="section-header">Performance Metrics</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Mock Interviews Completed", len(scores))
+        with st.container(border=True):
+            st.metric("Interviews Completed", len(st.session_state.score_history))
     with col2:
-        avg = sum(scores)/len(scores) if scores else 0
-        st.metric("Average Score", f"{avg:.1f} / 10")
-        
-    st.divider()
-    if len(scores) > 0:
-        st.subheader("Performance Trend")
-        st.line_chart(scores)
-    else:
-        st.info("Complete an interview to generate your performance graph.")
-
-def settings_page():
-    """Settings and Logout"""
-    st.header("⚙️ Account Settings")
-    st.write(f"Currently logged in as: **{st.session_state.username}**")
-    st.divider()
-    st.error("Danger Zone")
-    if st.button("Log Out", type="secondary"):
-        # Reset everything on logout
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.session_state.current_question = None
-        st.session_state.user_answer = None
-        st.session_state.feedback = None
-        st.rerun()
-
-# 4. --- Main App Router ---
-# This acts like the "traffic controller" for your app
-if not st.session_state.logged_in:
-    login_screen()
-else:
-    # Sidebar Navigation Menu
-    with st.sidebar:
-        st.markdown('<div class="gradient-text" style="font-size: 24px !important;">NexGen AI</div>', unsafe_allow_html=True)
-        st.write(f"👤 {st.session_state.username}")
-        st.divider()
-        # Radio buttons act as our page links
-        page = st.radio("Navigation", ["🎙️ Interview Room", "📊 Profile & Stats", "⚙️ Settings"])
-    
-    # Route to the correct page function based on what the user clicked
-    if page == "🎙️ Interview Room":
-        interview_room()
-    elif page == "📊 Profile & Stats":
-        profile_dashboard()
-    elif page == "⚙️ Settings":
-        settings_page()
+        with st.container(border=True):
+            avg = sum(st.session_state.score_history) / len(st.session_state.score_history)
+            st.metric("Average Score", f"{avg:.1f} / 10.0")
+            
+    with st.container(border=True):
+        st.subheader("Progress Trend")
+        st.line_chart(st.session_state.score_history)
