@@ -46,7 +46,7 @@ st.markdown("""
         font-weight: 800;
         line-height: 1.08;
         letter-spacing: -0.04em;
-        color: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
+        color: #FFFFFF; 
         margin-bottom: 0;
     }
     .hero-title span {
@@ -69,7 +69,7 @@ st.markdown("""
         margin-top: 52px;
         margin-bottom: 16px;
         letter-spacing: -0.03em;
-        color: #0F0A1E;
+        color: #EF4444;  /* ← change this */
     }
 
     /* ── Year badge pills ── */
