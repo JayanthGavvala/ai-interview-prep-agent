@@ -1,35 +1,53 @@
-# ⚡ NexGen AI Interview Simulator
+#  GradReady — AI Interview Prep for University Students
 
-> An AI-powered interview prep tool that reads your CV and grills you on your *actual* experience — just like a real Senior Engineer would.
+I built this because I was stressed.
 
-Instead of generic LeetCode drills, NexGen parses your uploaded CV and generates highly specific, contextual technical questions based on your real past projects and listed experience.
+Internship season was coming up and I had no idea how to actually prepare for technical interviews. I'd done the LeetCode grind, read a few articles, watched some YouTube videos — but none of it felt like *real* practice. Nothing was asking me questions about *my* projects, *my* experience, or the specific role I was actually applying for.
 
----
+So I built something that did.
 
-## ✨ Features
-
-- **Context-Aware Interviewing** — Extracts text from your uploaded CV via `PyPDF2` and injects your real experience into the LLM's system prompt, generating questions tailored specifically to *you*.
-- **Multi-Modal Responses** — Practice answering out loud with browser-based Speech-to-Text (`streamlit-mic-recorder`), or fall back to standard text input.
-- **Instant AI Feedback** — Powered by Google Gemini 2.5 Flash, acting as a strict technical interviewer: evaluating accuracy, surfacing missing concepts, and grading each answer out of 10.
-- **Cloud Progress Tracking** — Google Firebase (Firestore) stores your profile, full interview transcripts, and historical performance trends on a live dashboard.
-- **Modern UI/UX** — Streamlit with custom-injected CSS for a sleek, single-page interface that feels native to modern SaaS platforms.
+What started as a personal tool to help me practise turned into a full project I thought could genuinely help other uni students going through the same thing. If you're in first year trying to land your first internship, or a final year student who wants to walk into interviews feeling prepared — this is for you.
 
 ---
 
-## 🛠️ Tech Stack
+##  What It Actually Does
 
-| Layer | Technology |
+You upload your CV, pick the role you're applying for and your year of study, and GradReady generates interview questions based on *your actual experience* — not generic textbook stuff. It reads your CV and asks you about the projects you've listed, the technologies you've used, and the decisions you've made. Just like a real interviewer would.
+
+You can answer by typing or by speaking out loud (which I'd actually recommend — practising out loud is way harder than you think). The AI then gives you honest feedback: what you got right, what you missed, and one concrete thing to work on. It scores you out of 10 and tracks your progress over time so you can see yourself improving.
+
+Everything saves to the cloud, so your history and your score graph are there every time you come back.
+
+---
+
+##  Features
+
+- **CV-aware questions** — upload your PDF and the AI asks about your specific projects and tech stack, not generic questions
+- **Role-specific interviews** — choose from 12 internship roles including SWE, Data Science, ML, Product, Cybersecurity, DevOps, and more
+- **Year-adjusted difficulty** — 1st year gets foundational questions, 3rd year gets harder industry-level questions
+- **Voice or text answers** — speak your answer out loud or type it, your choice
+- **Honest AI feedback** — what you got right, what was missing, and one tip to improve
+- **Progress tracking** — score history, average, and personal best saved across every session
+- **Cloud sync** — log in with a username and your history follows you across devices and sessions
+- **Export transcripts** — download your full interview history as a `.txt` file
+
+---
+
+##  Tech Stack
+
+| Layer | Tech |
 |---|---|
-| Frontend | Python, Streamlit, HTML/CSS (custom styling) |
-| Backend | Google Firebase (Firestore) |
-| AI / LLM | Google Generative AI (Gemini 2.5 Flash) |
-| Utilities | PyPDF2, streamlit-mic-recorder, RegEx |
+| Frontend & Backend | Python, Streamlit |
+| AI / LLM | Google Gemini 2.5 Flash |
+| Database | Google Firebase (Firestore) |
+| CV Parsing | PyPDF2 |
+| Voice Input | streamlit-mic-recorder |
 
 ---
 
-## Running project locally
+## Running It Locally
 
-### 1. Clone the repository
+### 1. Clone the repo
 
 ```bash
 git clone https://github.com/jayanthgavvala/ai-interview-prep-agent.git
@@ -40,7 +58,8 @@ cd ai-interview-prep-agent
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate
+# Windows: venv\Scripts\activate
 ```
 
 ### 3. Install dependencies
@@ -49,30 +68,31 @@ source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Configure environment secrets
+### 4. Add your secrets
 
-Create a `.streamlit/` folder in the project root, then add a `secrets.toml` file inside it:
+Create a `.streamlit/secrets.toml` file in the project root:
 
 ```toml
 GEMINI_API_KEY = "your_gemini_api_key_here"
 
 [firebase]
 type                        = "service_account"
-project_id                  = "your_project_id"
-private_key_id              = "your_private_key_id"
+project_id                  = "your-project-id"
+private_key_id              = "your-private-key-id"
 private_key                 = "-----BEGIN PRIVATE KEY-----\nYour_Key_Here\n-----END PRIVATE KEY-----\n"
-client_email                = "your_client_email"
-client_id                   = "your_client_id"
+client_email                = "your-client-email"
+client_id                   = "your-client-id"
 auth_uri                    = "https://accounts.google.com/o/oauth2/auth"
 token_uri                   = "https://oauth2.googleapis.com/token"
 auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-client_x509_cert_url        = "your_cert_url"
+client_x509_cert_url        = "your-cert-url"
 ```
 
-> **⚠️ Security:** Never commit `secrets.toml` to version control.  
-> Make sure `.streamlit/secrets.toml` is listed in your `.gitignore` (see below).
+> You will need a Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey) and a Firebase service account key from your [Firebase project settings](https://console.firebase.google.com). See `FIREBASE_SETUP.md` for the full walkthrough.
 
-### 5. Launch the app
+>  **Never commit `secrets.toml` to GitHub.** Make sure it is in your `.gitignore`.
+
+### 5. Run it
 
 ```bash
 streamlit run app.py
@@ -80,39 +100,39 @@ streamlit run app.py
 
 ---
 
-## 🔒 `.gitignore` (recommended)
-
-Ensure the following entries are present to keep secrets and environment files out of your repository:
+##  .gitignore
 
 ```gitignore
-# Secrets
+# Secrets — never commit these
 .streamlit/secrets.toml
 
-# Python virtual environment
+# Virtual environment
 venv/
-.env
 
 # Python cache
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
 
-# OS artefacts
-.DS_Store
-Thumbs.db
+# Environment files
+.env
+*.json
 ```
 
 ---
 
-## 📈 Roadmap
+##  Roadmap
 
-- [ ] **Export Transcripts** — Download PDF reports of past interview sessions.
-- [ ] **Global Leaderboard** — Compare your average scores against other candidates.
+- [ ] PDF export of interview transcripts
+- [ ] Global leaderboard to compare scores with other students
+- [ ] Behavioural / HR question mode alongside technical questions
+- [ ] Company-specific question sets (Google, JP Morgan, etc.)
 
 ---
 
-## 🤝 Contributing
+## Why I Made This
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you'd like to change.
+Internship applications are brutal, especially when you are at uni and do not have much experience yet. I wanted something that would actually simulate a real interview — one that knew what *I* had worked on and could push me on it. I could not find that, so I built it.
+
+If it helps even one other student walk into an interview feeling more prepared than they would have otherwise, that is enough for me.
+
 
